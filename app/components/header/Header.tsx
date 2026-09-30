@@ -1,4 +1,6 @@
 import { useStore } from '@nanostores/react';
+import { useEffect } from 'react';
+import { updateProfile } from '~/lib/stores/profile';
 import { ClientOnly } from 'remix-utils/client-only';
 import { chatStore } from '~/lib/stores/chat';
 import { classNames } from '~/utils/classNames';
@@ -7,6 +9,14 @@ import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
 
 export function Header() {
   const chat = useStore(chatStore);
+
+  // Show the account name the reverse proxy logged this person in as.
+  useEffect(() => {
+    fetch('/api/whoami')
+      .then((r) => r.json() as Promise<{ user: string }>)
+      .then(({ user }) => user && updateProfile({ username: user }))
+      .catch(() => undefined);
+  }, []);
 
   return (
     <header
