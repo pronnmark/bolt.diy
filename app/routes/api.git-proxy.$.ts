@@ -105,8 +105,8 @@ async function handleProxyRequest(request: Request, path: string | undefined, co
       const allowed = /^github\.com\/pronnmark\/resone(\.git)?(\/|$)/i.test(path);
 
       const serverToken =
-        context?.cloudflare?.env?.VITE_GITHUB_ACCESS_TOKEN ||
-        (typeof process !== 'undefined' ? process.env?.VITE_GITHUB_ACCESS_TOKEN : undefined);
+        context?.cloudflare?.env?.BOLT_GITHUB_TOKEN ||
+        (typeof process !== 'undefined' ? process.env?.BOLT_GITHUB_TOKEN : undefined);
 
       if (serverToken && allowed) {
         headers.set('authorization', `Basic ${btoa(`x-access-token:${serverToken}`)}`);
