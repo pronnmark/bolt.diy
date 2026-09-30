@@ -15,9 +15,6 @@ interface FileContent {
 
 // Helper function to make any command non-interactive
 function makeNonInteractive(command: string): string {
-  // Set environment variables for non-interactive mode
-  const envVars = 'export CI=true DEBIAN_FRONTEND=noninteractive FORCE_COLOR=0';
-
   // Common interactive packages and their non-interactive flags
   const interactivePackages = [
     { pattern: /npx\s+([^@\s]+@?[^\s]*)\s+init/g, replacement: 'echo "y" | npx --yes $1 init --defaults --yes' },
@@ -35,7 +32,11 @@ function makeNonInteractive(command: string): string {
     processedCommand = processedCommand.replace(pattern, replacement);
   });
 
-  return `${envVars} && ${processedCommand}`;
+  /*
+   * JSH emits completion for `export` before a chained install finishes.
+   * Use the package manager's flags so the runner waits for installation.
+   */
+  return processedCommand;
 }
 
 export async function detectProjectCommands(files: FileContent[]): Promise<ProjectCommands> {

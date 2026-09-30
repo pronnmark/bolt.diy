@@ -10,7 +10,7 @@ describe('imported project setup', () => {
       },
     ]);
 
-    expect(commands.setupCommand).toContain('npm install');
+    expect(commands.setupCommand).toBe('npm install --no-audit --no-fund');
     expect(commands.setupCommand).not.toContain('npx');
     expect(commands.startCommand).toBe('npm run dev');
 
