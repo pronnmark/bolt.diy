@@ -11,6 +11,8 @@ import { classNames } from '~/utils/classNames';
 import { Button } from '~/components/ui/Button';
 import type { IChatMetadata } from '~/lib/persistence/db';
 import { X, Github, GitBranch } from 'lucide-react';
+import { collectImportAssets } from '~/utils/importAssets';
+import type { FileMap } from '~/lib/stores/files';
 
 // Import the new repository selector components
 import { GitHubRepositorySelector } from '~/components/@settings/tabs/github/components/GitHubRepositorySelector';
@@ -44,7 +46,7 @@ const MAX_TOTAL_SIZE = 500 * 1024; // 500KB total limit
 
 interface GitCloneButtonProps {
   className?: string;
-  importChat?: (description: string, messages: Message[], metadata?: IChatMetadata) => Promise<void>;
+  importChat?: (description: string, messages: Message[], metadata?: IChatMetadata, assets?: FileMap) => Promise<void>;
 }
 
 export default function GitCloneButton({ importChat, className }: GitCloneButtonProps) {
@@ -150,7 +152,12 @@ ${escapeBoltTags(file.content)}
           messages.push(commandsMessage);
         }
 
-        await importChat(`Git Project:${repoUrl.split('/').slice(-1)[0]}`, messages);
+        await importChat(
+          `Git Project:${repoUrl.split('/').slice(-1)[0]}`,
+          messages,
+          { gitUrl: repoUrl },
+          collectImportAssets(data),
+        );
       }
     } catch (error) {
       console.error('Error during import:', error);

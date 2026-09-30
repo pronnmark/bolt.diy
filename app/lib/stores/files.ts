@@ -733,7 +733,9 @@ export class FilesStore {
            */
           const isBinary = isBinaryFile(buffer);
 
-          if (!isBinary) {
+          if (isBinary && buffer) {
+            content = Buffer.from(buffer).toString('base64');
+          } else if (!isBinary) {
             content = this.#decodeFileContent(buffer);
           }
 

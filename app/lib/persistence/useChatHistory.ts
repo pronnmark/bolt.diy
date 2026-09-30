@@ -22,6 +22,7 @@ import type { Snapshot } from './types';
 import { webcontainer } from '~/lib/webcontainer';
 import { detectProjectCommands, createCommandActionsString } from '~/utils/projectCommands';
 import type { ContextAnnotation } from '~/types/context';
+import { restoreImportFiles } from '~/utils/importAssets';
 
 export interface ChatHistoryItem {
   id: string;
@@ -134,7 +135,7 @@ export function useChatHistory() {
                   <boltArtifact id="restored-project-setup" title="Restored Project & Setup" type="bundled">
                   ${Object.entries(snapshot?.files || {})
                     .map(([key, value]) => {
-                      if (value?.type === 'file') {
+                      if (value?.type === 'file' && !value.isBinary) {
                         return `
                       <boltAction type="file" filePath="${key}">
 ${value.content}
@@ -170,7 +171,17 @@ ${value.content}
                  */
                 ...filteredMessages,
               ];
-              restoreSnapshot(mixedId);
+            }
+
+            if (snapshot) {
+              const filesToRestore =
+                startingIdx > 0
+                  ? snapshot.files
+                  : Object.fromEntries(
+                      Object.entries(snapshot.files).filter(([, file]) => file?.type === 'file' && file.isBinary),
+                    );
+
+              await restoreImportFiles(await webcontainer, filesToRestore);
             }
 
             setInitialMessages(filteredMessages);
@@ -221,39 +232,6 @@ ${value.content}
     },
     [db],
   );
-
-  const restoreSnapshot = useCallback(async (id: string, snapshot?: Snapshot) => {
-    // const snapshotStr = localStorage.getItem(`snapshot:${id}`); // Remove localStorage usage
-    const container = await webcontainer;
-
-    const validSnapshot = snapshot || { chatIndex: '', files: {} };
-
-    if (!validSnapshot?.files) {
-      return;
-    }
-
-    Object.entries(validSnapshot.files).forEach(async ([key, value]) => {
-      if (key.startsWith(container.workdir)) {
-        key = key.replace(container.workdir, '');
-      }
-
-      if (value?.type === 'folder') {
-        await container.fs.mkdir(key, { recursive: true });
-      }
-    });
-    Object.entries(validSnapshot.files).forEach(async ([key, value]) => {
-      if (value?.type === 'file') {
-        if (key.startsWith(container.workdir)) {
-          key = key.replace(container.workdir, '');
-        }
-
-        await container.fs.writeFile(key, value.content, { encoding: value.isBinary ? undefined : 'utf8' });
-      } else {
-      }
-    });
-
-    // workbenchStore.files.setKey(snapshot?.files)
-  }, []);
 
   return {
     ready: !mixedId || ready,
@@ -356,13 +334,18 @@ ${value.content}
         console.log(error);
       }
     },
-    importChat: async (description: string, messages: Message[], metadata?: IChatMetadata) => {
+    importChat: async (description: string, messages: Message[], metadata?: IChatMetadata, assets?: FileMap) => {
       if (!db) {
         return;
       }
 
       try {
         const newId = await createChatFromMessages(db, description, messages, metadata);
+
+        if (assets && Object.keys(assets).length) {
+          await setSnapshot(db, newId, { chatIndex: '', files: assets });
+        }
+
         window.location.href = `/chat/${newId}`;
         toast.success('Chat imported successfully');
       } catch (error) {

@@ -10,6 +10,7 @@ import { useChatHistory } from '~/lib/persistence';
 import { createCommandsMessage, detectProjectCommands, escapeBoltTags } from '~/utils/projectCommands';
 import { LoadingOverlay } from '~/components/ui/LoadingOverlay';
 import { toast } from 'react-toastify';
+import { collectImportAssets } from '~/utils/importAssets';
 
 const IGNORE_PATTERNS = [
   'node_modules/**',
@@ -55,7 +56,8 @@ export function GitUrlImport() {
         const { workdir, data } = await gitClone(repoUrl);
 
         if (importChat) {
-          const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath));
+          const assets = collectImportAssets(data);
+          const filePaths = Object.keys(data).filter((filePath) => !ig.ignores(filePath) && !assets[filePath]);
           const textDecoder = new TextDecoder('utf-8');
 
           const fileContents = filePaths
@@ -100,7 +102,7 @@ ${escapeBoltTags(file.content)}
             messages.push(commandsMessage);
           }
 
-          await importChat(`Git Project:${repoUrl.split('/').slice(-1)[0]}`, messages, { gitUrl: repoUrl });
+          await importChat(`Git Project:${repoUrl.split('/').slice(-1)[0]}`, messages, { gitUrl: repoUrl }, assets);
         }
       } catch (error) {
         console.error('Error during import:', error);
