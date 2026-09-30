@@ -48,6 +48,11 @@ export const links: LinksFunction = () => [
 ];
 
 const inlineThemeCode = stripIndents`
+  // Basic auth is cached by the browser; remove URL credentials before relative fetches.
+  if (location.href.startsWith(location.protocol + '//') && new URL(location.href).username) {
+    history.replaceState(history.state, '', location.pathname + location.search + location.hash);
+  }
+
   setTutorialKitTheme();
 
   function setTutorialKitTheme() {

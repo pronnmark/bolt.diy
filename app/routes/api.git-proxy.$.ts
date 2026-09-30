@@ -123,8 +123,6 @@ async function handleProxyRequest(request: Request, path: string | undefined, co
       headers.set('User-Agent', 'git/@isomorphic-git/cors-proxy');
     }
 
-    console.log('Request headers:', Object.fromEntries(headers.entries()));
-
     // Prepare fetch options
     const fetchOptions: RequestInit = {
       method: request.method,
