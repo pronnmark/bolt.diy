@@ -43,15 +43,15 @@ const EXPOSE_HEADERS = [
 ];
 
 // Handle all HTTP methods
-export async function action({ request, params }: ActionFunctionArgs) {
-  return handleProxyRequest(request, params['*']);
+export async function action({ request, params, context }: ActionFunctionArgs) {
+  return handleProxyRequest(request, params['*'], context);
 }
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  return handleProxyRequest(request, params['*']);
+export async function loader({ request, params, context }: LoaderFunctionArgs) {
+  return handleProxyRequest(request, params['*'], context);
 }
 
-async function handleProxyRequest(request: Request, path: string | undefined) {
+async function handleProxyRequest(request: Request, path: string | undefined, context?: any) {
   try {
     if (!path) {
       return json({ error: 'Invalid proxy URL format' }, { status: 400 });
@@ -94,6 +94,22 @@ async function handleProxyRequest(request: Request, path: string | undefined) {
     for (const header of ALLOW_HEADERS) {
       if (request.headers.has(header)) {
         headers.set(header, request.headers.get(header)!);
+      }
+    }
+
+    /*
+     * The browser also sends the site's own basic-auth header, which GitHub rejects.
+     * For github.com use the server-side token instead, so users need no credentials.
+     */
+    if (domain === 'github.com') {
+      const serverToken =
+        context?.cloudflare?.env?.VITE_GITHUB_ACCESS_TOKEN ||
+        (typeof process !== 'undefined' ? process.env?.VITE_GITHUB_ACCESS_TOKEN : undefined);
+
+      if (serverToken) {
+        headers.set('authorization', `Basic ${btoa(`x-access-token:${serverToken}`)}`);
+      } else {
+        headers.delete('authorization');
       }
     }
 
