@@ -102,11 +102,13 @@ async function handleProxyRequest(request: Request, path: string | undefined, co
      * For github.com use the server-side token instead, so users need no credentials.
      */
     if (domain === 'github.com') {
+      const allowed = /^github\.com\/pronnmark\/resone(\.git)?(\/|$)/i.test(path);
+
       const serverToken =
         context?.cloudflare?.env?.VITE_GITHUB_ACCESS_TOKEN ||
         (typeof process !== 'undefined' ? process.env?.VITE_GITHUB_ACCESS_TOKEN : undefined);
 
-      if (serverToken) {
+      if (serverToken && allowed) {
         headers.set('authorization', `Basic ${btoa(`x-access-token:${serverToken}`)}`);
       } else {
         headers.delete('authorization');
