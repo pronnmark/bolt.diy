@@ -12,23 +12,28 @@ the result to GitHub with zero setup.
 4. They prompt the model (OmniRoute, default `OpenAILike` / `coding`), see the **Preview** tab
    run the app, and push to `pronnmark/resone` via the git proxy.
 
-## How it is wired
-- Runs on pbox as transient user unit `bolt-diy` (`wrangler pages dev ./build/client`, `100.64.0.2:5173`).
-  Rebuild with `pnpm build`, then `systemctl --user restart bolt-diy`.
-- Edge: Caddy on hostbun, file `/data/coolify/proxy/caddy/dynamic/bolt.caddy` (root-owned; edit with
-  `sudo -n`, reload `coolify-proxy`). Add a person = add a `basicauth` line (`caddy hash-password`).
-- `app/routes/api.git-proxy.$.ts`: for `github.com` it injects the **server-side**
-  `VITE_GITHUB_ACCESS_TOKEN` (from `.dev.vars`, never in the client bundle) **only for
+## How it is wired (corrected 2026-09-30)
+- **Runs on Coolify, not on pbox.** App `bolt-diy-ovh` (uuid `s0ik0oqbvrea15zieh3ukl9c`) on server
+  `ovh-omniroute` (`100.64.0.16`), Dockerfile build pack from GitHub `pronnmark/bolt.diy` branch `main`,
+  container port 5173 (published on host 5173). Env (OmniRoute provider, `BOLT_GITHUB_TOKEN`) lives in Coolify.
+  Deploy: `git push fork main`, then `coolify deploy name bolt-diy-ovh` and poll `coolify deploy get <uuid>`
+  until `finished`. A redeploy causes ~1 min of 502s. Coolify internal URL `bolt2.hostbun.cc` is not the one people use.
+- The old pbox unit `bolt-diy` (`100.64.0.2:5173`) is **legacy and not in the path**; do not debug it.
+- Edge: Caddy on hostbun, `/data/coolify/proxy/caddy/dynamic/bolt.caddy` (root-owned; `sudo -n`), upstream
+  `reverse_proxy 100.64.0.16:5173`. Accounts are `basicauth` lines (`caddy hash-password`); `resone`/`resone` and
+  `ddash`/`ddash` exist (keyvault `bolt-diy/basic-auth*`). Caddy sets `X-Bolt-User`.
+- `app/routes/api.git-proxy.$.ts`: for `github.com` injects the server-side `BOLT_GITHUB_TOKEN` **only for
   `pronnmark/resone`**; every other repo gets 401. Do not widen this.
-- LLM: OmniRoute is the only provider (`.env.local`). Do not change model/provider without approval.
-- bolt.diy has no real accounts: chats live in each browser; pushes all go out as Philip's GitHub user.
+- `app/utils/projectCommands.ts`: setup command is plain `npm install` (an earlier `npx update-browserslist-db`
+  step made the WebContainer skip deps -> `next: command not found`). Keep setup to `npm install`.
+- LLM: OmniRoute only. Do not change model/provider without approval.
+- No real accounts: chats live in each browser; pushes go out as Philip's GitHub user.
 
-## Known state / verification (2026-09-30)
-- Verified in headless Chromium: login, whoami, clone of resone through the proxy (200s), files load.
-- NOT working/unverified: auto "Setup the codebase" command fails (`next: command not found`);
-  manual `npm install` succeeds in the terminal. Preview with `npm run dev` (Next.js) crashed the
-  headless test browser; unverified in a real Chrome. Push from the UI is untested (curl-only).
-- Preview needs cross-origin isolation (COOP/COEP headers are present) and a real browser.
+## Verification (2026-09-30)
+- Real-browser test (playwright-core from `~/uppl/node_modules`, `httpCredentials` resone/resone, NOT `user:pass@` in the
+  URL - that breaks every fetch): open `/git?url=https://github.com/pronnmark/resone.git`, wait ~2.5 min; terminal shows
+  `vite ready`, Preview tab renders Résone. Write screenshots to a unique dir - `/tmp` is shared and files get clobbered.
+- Preview needs cross-origin isolation (COOP/COEP present) and a real browser over HTTPS.
 
 ## Rules
 - Validate changes against https://bolt.hostbun.cc, not just localhost.
