@@ -13,14 +13,14 @@ the result to GitHub with zero setup.
    run the app, and push to `pronnmark/resone` via the git proxy.
 
 ## How it is wired (corrected 2026-09-30)
-- **Runs on Coolify, not on pbox.** App `bolt-diy-ovh` (uuid `s0ik0oqbvrea15zieh3ukl9c`) on server
-  `ovh-omniroute` (`100.64.0.16`), Dockerfile build pack from GitHub `pronnmark/bolt.diy` branch `main`,
-  container port 5173 (published on host 5173). Env (OmniRoute provider, `BOLT_GITHUB_TOKEN`) lives in Coolify.
-  Deploy: `git push fork main`, then `coolify deploy name bolt-diy-ovh` and poll `coolify deploy get <uuid>`
-  until `finished`. A redeploy causes ~1 min of 502s. Coolify internal URL `bolt2.hostbun.cc` is not the one people use.
-- The old pbox unit `bolt-diy` (`100.64.0.2:5173`) is **legacy and not in the path**; do not debug it.
+- **Live code and service are on pbox.** Checkout `/home/philip/Documents/GitHub/bolt.diy`, branch `main`.
+  User systemd service `bolt-diy`, listening at `100.64.0.2:5173`. Use `ssh -n pbox` for live operations.
+  Keep builds off pbox while agents are live: build the same source on the Mac, transfer `build/`, then restart
+  `systemctl --user restart bolt-diy`. Verify the public health endpoint, service logs, and browser preview.
+- The separate Coolify app `bolt-diy-ovh` (uuid `s0ik0oqbvrea15zieh3ukl9c`) on `100.64.0.16` exists,
+  but is not the current `bolt.hostbun.cc` upstream. Inspect Caddy before deciding where to deploy.
 - Edge: Caddy on hostbun, `/data/coolify/proxy/caddy/dynamic/bolt.caddy` (root-owned; `sudo -n`), upstream
-  `reverse_proxy 100.64.0.16:5173`. Accounts are `basicauth` lines (`caddy hash-password`); `resone`/`resone` and
+  `reverse_proxy 100.64.0.2:5173`. Accounts are `basicauth` lines (`caddy hash-password`); `resone`/`resone` and
   `ddash`/`ddash` exist (keyvault `bolt-diy/basic-auth*`). Caddy sets `X-Bolt-User`.
 - `app/routes/api.git-proxy.$.ts`: for `github.com` injects the server-side `BOLT_GITHUB_TOKEN` **only for
   `pronnmark/resone`**; every other repo gets 401. Do not widen this.

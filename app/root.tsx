@@ -48,7 +48,10 @@ export const links: LinksFunction = () => [
 ];
 
 const inlineThemeCode = stripIndents`
-  // Basic auth is cached by the browser; remove URL credentials before relative fetches.
+  // An explicit base prevents inherited URL credentials from breaking relative fetches.
+  const requestBase = document.createElement('base');
+  requestBase.href = location.origin + location.pathname;
+  document.head.prepend(requestBase);
   history.replaceState(history.state, '', location.origin + location.pathname + location.search + location.hash);
 
   setTutorialKitTheme();
