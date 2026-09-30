@@ -37,6 +37,17 @@ export default class OpenAILikeProvider extends BaseProvider {
       return [];
     }
 
+    /*
+     * An explicit model list wins over /models: gateways like OmniRoute list hundreds of ids
+     * that do not actually serve.
+     */
+    // eslint-disable-next-line dot-notation
+    const pinnedModels = serverEnv['OPENAI_LIKE_API_MODELS'] || settings?.OPENAI_LIKE_API_MODELS;
+
+    if (pinnedModels) {
+      return this._parseModelsFromEnv(pinnedModels);
+    }
+
     try {
       const response = await fetch(`${baseUrl}/models`, {
         headers: {
