@@ -234,6 +234,13 @@
   // Function to activate/deactivate inspector
   function setInspectorActive(active) {
     isInspectorActive = active;
+
+    if (!document.body) {
+      document.addEventListener('DOMContentLoaded', function() {
+        setInspectorActive(isInspectorActive);
+      }, { once: true });
+      return;
+    }
     
     if (active) {
       // Add inspector styles
