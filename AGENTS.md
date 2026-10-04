@@ -12,16 +12,18 @@ the result to GitHub with zero setup.
 4. They prompt the model (OmniRoute, default `OpenAILike` / `coding`), see the **Preview** tab
    run the app, and push to `pronnmark/resone` via the git proxy.
 
-## How it is wired (corrected 2026-09-30)
-- **Live code and service are on pbox.** Checkout `/home/philip/Documents/GitHub/bolt.diy`, branch `main`.
-  User systemd service `bolt-diy`, listening at `100.64.0.2:5173`. Use `ssh -n pbox` for live operations.
-  Keep builds off pbox while agents are live: build the same source on the Mac, transfer `build/`, then restart
-  `systemctl --user restart bolt-diy`. Verify the public health endpoint, service logs, and browser preview.
-- The separate Coolify app `bolt-diy-ovh` (uuid `s0ik0oqbvrea15zieh3ukl9c`) on `100.64.0.16` exists,
-  but is not the current `bolt.hostbun.cc` upstream. Inspect Caddy before deciding where to deploy.
-- Edge: Caddy on hostbun, `/data/coolify/proxy/caddy/dynamic/bolt.caddy` (root-owned; `sudo -n`), upstream
-  `reverse_proxy 100.64.0.2:5173`. Accounts are `basicauth` lines (`caddy hash-password`); `resone`/`resone` and
-  `ddash`/`ddash` exist (keyvault `bolt-diy/basic-auth*`). Caddy sets `X-Bolt-User`.
+## How it is wired (verified 2026-10-04)
+- **Live deployment = Coolify app `bolt-diy`, uuid `8oqqoe2dlz1eep5m5esbdl0x`, on server `hostbun`.**
+  Dockerfile build from GitHub `pronnmark/bolt.diy` `main`, port 5173, fqdn `https://bolt.hostbun.cc`.
+  Coolify's own proxy (Caddy, config generated from the app) routes to the container and enforces basic auth.
+  Do NOT edit a `bolt.caddy` file: it no longer exists. Env vars (OmniRoute provider, `BOLT_GITHUB_TOKEN`) are in Coolify.
+- Login is set on the Coolify app (`http_basic_auth_username/password` = `resone`/`resone`, API
+  `PATCH /api/v1/applications/<uuid>`, then restart; CLI cannot set it). Keyvault: `bolt-diy/basic-auth-friend`.
+  Changing it only takes effect after the restart deployment finishes (~3 min of 401s/502s meanwhile).
+- Deploy: push to `pronnmark/bolt.diy` `main`, then `coolify deploy name bolt-diy` / `coolify app deployments list <uuid>`.
+- Not in the path (do not debug these): Coolify app `bolt-diy-ovh` (`bolt2.hostbun.cc`, `100.64.0.16`) and the
+  pbox systemd unit `bolt-diy` (`100.64.0.2`).
+- `/api/whoami` currently returns an empty user: the Coolify proxy does not set `X-Bolt-User`. Known gap.
 - `app/routes/api.git-proxy.$.ts`: for `github.com` injects the server-side `BOLT_GITHUB_TOKEN` **only for
   `pronnmark/resone`**; every other repo gets 401. Do not widen this.
 - `app/utils/projectCommands.ts`: setup command is plain `npm install` (an earlier `npx update-browserslist-db`
